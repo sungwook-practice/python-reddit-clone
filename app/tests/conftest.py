@@ -2,14 +2,23 @@ import sqlite3
 import pytest
 import os
 import re
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
 
 
 @pytest.fixture(scope="session", autouse=True)
 def session():
-    connection = sqlite3.Connection(":memory:")
-    db_session = connection.cursor()
+    # reference: https://docs.sqlalchemy.org/en/13/core/connections.html
+    engine = create_engine("sqlite://", echo=True)
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
 
-    yield db_session
+    yield session
+
+    session.rollback()
+    # 테스트 중 DB에 반영하고 싶으면 주석 해제
+    # transaction.commit()
     connection.close()
 
 
@@ -23,3 +32,5 @@ def setup_db(session):
 
         for statement in statements:
             session.execute(statement)
+
+    yield session
